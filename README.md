@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Socket
 *It's a simple (yet broken, wip) unix socket implementation. This time I've tried to write clean asm. I still have a lot
 to learn.*
