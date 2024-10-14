@@ -13,19 +13,20 @@ _start:
     call do_accept
     mov [accepted_file_descriptor], rax
 
-    call handle_connection
+    call receive_message_from_client
 
     xor rdi, rdi
     mov rax, 60
     syscall
 
-handle_connection:
+receive_message_from_client:
+    ; Receive a message from client
+    ; Compare the string to a potential command
     
     push rbp
     mov rbp, rsp
 
-    ; retrieve the new file descriptor
-    mov rdi, [accepted_file_descriptor]
+    mov rdi, [accepted_file_descriptor] ; retrieve the new file descriptor
 
     lea rsi, [client_message]
     mov rdx, 0x10
@@ -35,32 +36,72 @@ handle_connection:
     mov r9, 0
     syscall
 
-    call send_message
+    mov byte [rsi+rax-1], 0             ; remove the carriage return
+    xor rcx, rcx                        ; set counter to 0
+
+    call compare_message_to_command
 
     mov rsp, rbp
     pop rbp
 
-    call handle_connection
+    call receive_message_from_client
 
     ret
 
-send_message:
+compare_message_to_command:
+    ; String comparaison
+    ; al  : is rax's 8 bit register
+    ; rsi : holds client_message
+    ; rcx : counter set to 0 and gets incremented with count_inc
+
+    mov al, [rsi+rcx]
+    cmp al, [client_message + rcx] 
+
+    je count_inc
+
+    ret
+
+count_inc:
+    ; inc rcx, if rcx reach 3, go to send_message
+    ; 3 because read is 0 -> 3 char
+    inc rcx
+    cmp rcx, 3
+    jl compare_message_to_command
+    je list_current_directory
+
+list_current_directory:
+
     push rbp
     mov rbp, rsp
 
-    mov rsi, msg_received  
+    ; get current directory
+    xor rax, rax
+    mov rax, 79
+    lea rdi, [current_directory_path]
+    mov rsi, 255
+    syscall
+
+    ; open current directory
+    xor rax, rax
+    mov rax, 2
+    mov rsi, 2
+    mov rdx, 440
+    syscall
+
+    mov rsi, [file_on_path]
+    mov rdx, 255
+    
+
+send_message_to_client:
     mov rdi, [accepted_file_descriptor]
-    mov rdx, 16
+    mov rsi, read_command 
+    mov rdx, 4
     mov r10, 0
     mov r8, 0
     mov r9, 0
     mov rax, 44
 
     syscall
-
-    mov rsp, rbp
-    pop rbp
-
     ret
 
 do_accept:
@@ -156,7 +197,8 @@ create_socket:
     ret
 
 section .data
-    msg_received db "Message received", 0
+    read_command db "read", 0
+    answer db "Ok", 0
 
 section .bss
     ; This is something that I struggled with, so I'll try to be as clear as possible
@@ -165,7 +207,9 @@ section .bss
     ; Secondly, client's port
     ; Thirdly, client's addr
     ; And the we need to add padding of 8 Bytes of zeroes
-    client_addr resb 16 ; addr struc to store client informations *WIP*
+    ; client_addr resb 16 ; addr struc to store client informations *WIP*
     client_message resb 16
     socket_file_descriptor resb 1
     accepted_file_descriptor resb 1
+    file_on_path resb 255
+    current_directory_path resb 255
