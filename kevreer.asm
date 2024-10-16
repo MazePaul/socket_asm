@@ -1,6 +1,6 @@
 global _start
 
-%include "dizolein.asm"
+extern dizo
 
 section .text
 
@@ -69,102 +69,7 @@ count_inc:
     inc rcx
     cmp rcx, 3
     jl compare_message_to_command
-    je list_current_directory
-
-list_current_directory:
-    ; list... [complete subroutines description]
-    push rbp
-    mov rbp, rsp
-
-    ; get current directory
-    xor rax, rax
-    mov rax, 79
-    lea rdi, [current_directory_path]
-    mov rsi, 255
-    syscall
-
-    ; open current directory
-    xor rax, rax
-    mov rax, 2
-    mov rsi, 0
-    mov rdx, 440
-    syscall
-
-    lea rsi, [file_on_path]
-    mov rdi, rax
-    mov rdx, 255
-    xor rax, rax
-    mov rax, 78
-    syscall
-
-    call breakdown_getdents_structure
-
-    mov rsp, rbp
-    pop rbp
-
-    ret
-
-breakdown_getdents_structure:
-    ; From man getdents
-
-    ; struct linux_dirent {
-    ;           unsigned long  d_ino;
-    ;           unsigned long  d_off;
-    ;           unsigned short d_reclen;
-    ;           char           d_name[];
-    ;                                  
-    ;           char           pad;   
-    ;           char           d_type;
-    ;       }
-
-    ; d_ino    : 8 Bytes This is the inode number of the file or directory.
-    ; d_off    : 8 Bytes This offset points to the next directory entry in the buffer. 
-    ; d_reclen : 2 Bytes This indicates the length of this directory entry (in bytes).
-    ; d_name   : (char) depends on file name. Null terminated string
-    ; d_type   : Type of the file This indicates the type of the file (e.g., regular file, directory, etc.).
-
-    ; Retrieve d_name d_type
-    ; And pass those arguments to send_message_to_client
-
-    push rbp
-    mov rbp, rsp
-
-    xor rcx, rcx
-    mov rcx, 18
-
-    mov sil, [rsi+rcx]
-    cmp sil, 0
-    jne iterate_through_file_name
-
-    push rdx 
-    push rsi
-    push rax
-
-    call send_message_to_client
-
-    mov rsp, rbp
-    pop rbp
-
-    ret
-
-iterate_through_file_name:
-    inc rcx
-    mov sil, [rsi+rcx]
-    cmp sil, 0
-
-send_message_to_client:
-
-    mov rdx, [rsp+16]
-    mov rsi, [rsp+24]
-    mov rdi, [rsp+32]
-    mov r10, 0
-    mov r8, 0
-    mov r9, 0
-    mov rax, 44
-
-    syscall
-
-    ret
+    je dizo 
 
 do_accept:
     ; int accept(int sockfd, struct sockaddr addr, socklen_t restrict addrlen)
@@ -273,5 +178,3 @@ section .bss
     client_message resb 16
     socket_file_descriptor resb 1
     accepted_file_descriptor resb 1
-    file_on_path resb 1024
-    current_directory_path resb 255
