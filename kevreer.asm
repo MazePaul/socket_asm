@@ -1,5 +1,7 @@
 global _start
 
+%include "dizolein.asm"
+
 section .text
 
 _start:
