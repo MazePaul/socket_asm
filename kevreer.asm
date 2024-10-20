@@ -1,5 +1,7 @@
 global _start
 
+extern dizo
+
 section .text
 
 _start:
@@ -67,42 +69,7 @@ count_inc:
     inc rcx
     cmp rcx, 3
     jl compare_message_to_command
-    je list_current_directory
-
-list_current_directory:
-
-    push rbp
-    mov rbp, rsp
-
-    ; get current directory
-    xor rax, rax
-    mov rax, 79
-    lea rdi, [current_directory_path]
-    mov rsi, 255
-    syscall
-
-    ; open current directory
-    xor rax, rax
-    mov rax, 2
-    mov rsi, 2
-    mov rdx, 440
-    syscall
-
-    mov rsi, [file_on_path]
-    mov rdx, 255
-    
-
-send_message_to_client:
-    mov rdi, [accepted_file_descriptor]
-    mov rsi, read_command 
-    mov rdx, 4
-    mov r10, 0
-    mov r8, 0
-    mov r9, 0
-    mov rax, 44
-
-    syscall
-    ret
+    je dizo 
 
 do_accept:
     ; int accept(int sockfd, struct sockaddr addr, socklen_t restrict addrlen)
@@ -211,5 +178,3 @@ section .bss
     client_message resb 16
     socket_file_descriptor resb 1
     accepted_file_descriptor resb 1
-    file_on_path resb 255
-    current_directory_path resb 255
