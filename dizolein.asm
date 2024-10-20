@@ -11,6 +11,8 @@ list_current_directory:
     push rbp
     mov rbp, rsp
 
+    sub rsp, 8
+
     ; get current directory
     xor rax, rax
     mov rax, 79
@@ -25,12 +27,20 @@ list_current_directory:
     mov rdx, 440
     syscall
 
+    ; get directory entries
     lea rsi, [getdents_struct]
     mov rdi, rax
-    mov rdx, 255
+    mov rdx, 1024
     xor rax, rax
     mov rax, 78
     syscall
+
+    ; On gcwd call success, rax, whill holds the number of bytes read
+    ; We gonna store it to use it later
+    mov [rsp], rax
+    ; Make sure rcx set to 0 to use it as a counter
+    xor rcx, rcx
+    mov r10, 18
 
     call breakdown_getdents_structure
 
@@ -64,8 +74,11 @@ breakdown_getdents_structure:
     push rbp
     mov rbp, rsp
 
+    sub rsp, 16
+
+    ; rcx points now to the file name from this very structure
     xor rcx, rcx
-    mov rcx, 18
+    add rcx, 18
 
     ; rax: counter for destination string
     ; rbx: counter for source string (getdents_struct) at 18 bits offset
@@ -75,10 +88,37 @@ breakdown_getdents_structure:
     lea rdi, [current_file_name] 
     call iterate_through_file_name
 
-    push rbx
+    ; Store the counter in the stack
+    mov [rsp], rcx
+    ; Store the buffer entry directories
+    mov [rsp + 8], rsi
 
     call send_message_to_client
 
+    ; We need to compare rcx with the value store in [rsp] being the total bytes read
+    cmp rcx, [rsp + 16]
+    je breakdown_struct_ends
+
+    ; Points rcx to the next structure in the buffer
+    ; rcx: points to d_type in current struct
+    ; rbx: holds the size of the file name
+    ; 2 bytes for the length of the directory 
+    pop rcx
+    pop rsi
+    movzx rcx, word[rsi+16]
+    add rsi, rcx
+
+    mov rsp, rbp
+    pop rbp
+
+    ; Recursive call to iterate through current directory
+    ; WARNING: might be a problem because of the stack, if it has too much files on the directory, 
+    ; thus it might increase the stack too much and cause a stack overflow, but I have to check it out
+    jne breakdown_getdents_structure
+
+
+breakdown_struct_ends:
+    ; Epilogue
     mov rsp, rbp
     pop rbp
 
@@ -86,9 +126,10 @@ breakdown_getdents_structure:
 
 iterate_through_file_name:
     ; al : -> rax 8 bits will contains char to compare
-    ; rcx: counter
+    ; rcx: counter inside the structure
     ; rsi: file_on_path
     ; rdi: file_name
+    ; rbx: length of the current string
     mov al, [rsi+rcx]
     mov [rdi+rbx], al
     inc rbx
@@ -98,7 +139,6 @@ iterate_through_file_name:
     ret
 
 send_message_to_client:
-
     mov rdx, rbx
     lea rsi, [current_file_name]
     mov rdi, 4
