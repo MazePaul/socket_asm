@@ -7,7 +7,7 @@ dizo:
     ret
 
 list_current_directory:
-; list... [complete subroutines description]
+    ; list... [complete subroutines description]
     push rbp
     mov rbp, rsp
 
@@ -36,11 +36,9 @@ list_current_directory:
     syscall
 
     ; On gcwd call success, rax, whill holds the number of bytes read
-    ; We gonna store it to use it later
-    mov [rsp], rax
-    ; Make sure rcx set to 0 to use it as a counter
-    xor rcx, rcx
-    mov r10, 18
+    mov [rsp], rax ; We gonna store it to use it later
+    xor rcx, rcx   ; Make sure rcx set to 0 to use it as a counter
+    xor r11, r11
 
     call breakdown_getdents_structure
 
@@ -74,39 +72,37 @@ breakdown_getdents_structure:
     push rbp
     mov rbp, rsp
 
-    sub rsp, 16
+    sub rsp, 24                     ; allocating space to store local variables
 
-    ; rcx points now to the file name from this very structure
     xor rcx, rcx
-    add rcx, 18
-
-    ; rax: counter for destination string
-    ; rbx: counter for source string (getdents_struct) at 18 bits offset
-    ; rdi: holds variable address for future file name
-    xor rax, rax
-    xor rbx, rbx
-    lea rdi, [current_file_name] 
+    add rcx, 18                     ; rcx points now to the file name from this very structure
+    
+    xor rax, rax                    ; rax: counter for destination string
+    xor rbx, rbx                    ; rbx: counter for source string (getdents_struct) at 18 bits offset
+    lea rdi, [current_file_name]    ; rdi: holds variable address for future file name
     call iterate_through_file_name
 
-    ; Store the counter in the stack
-    mov [rsp], rcx
-    ; Store the buffer entry directories
-    mov [rsp + 8], rsi
-
+    mov [rsp], rcx                  ; Store the counter in the stack
+    mov [rsp + 8], rsi              ; Store the buffer entry directories
     call send_message_to_client
 
-    ; We need to compare rcx with the value store in [rsp] being the total bytes read
-    cmp rcx, [rsp + 16]
+    mov [rsp + 16], r11
+    
+    cmp r11, [rsp + 32]             ; We need to compare rcx with the value store in [rsp] being the total bytes read
     je breakdown_struct_ends
 
     ; Points rcx to the next structure in the buffer
     ; rcx: points to d_type in current struct
     ; rbx: holds the size of the file name
     ; 2 bytes for the length of the directory 
-    pop rcx
-    pop rsi
-    movzx rcx, word[rsi+16]
+    ; poping rcx is useless thus store it in stack too
+    pop rcx ; to remove
+    pop rsi                 ; Directory entries buffer (containing structure)
+    movzx rcx, word[rsi+16] ; Retrieving length of current structure
     add rsi, rcx
+
+    pop r11
+    add r11, rcx
 
     mov rsp, rbp
     pop rbp
@@ -146,10 +142,19 @@ send_message_to_client:
     mov r8, 0
     mov r9, 0
     mov rax, 44
-
     syscall
 
+    ; Send the newline character
+    mov rdx, 1               ; Length of the newline (1 byte)
+    lea rsi, [newline]       ; Load address of the newline
+    mov rdi, 4               ; File descriptor 
+    mov rax, 44              
+    syscall                  
+
     ret
+
+section .data
+    newline db 0x0A
 
 section .bss
     getdents_struct resb 1024
