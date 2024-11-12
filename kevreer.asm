@@ -57,7 +57,7 @@ compare_message_to_command:
     ; rcx : counter set to 0 and gets incremented with count_inc
 
     mov al, [rsi+rcx]
-    cmp al, [client_message + rcx] 
+    cmp al, [read_command + rcx] 
 
     je count_inc
 
@@ -165,6 +165,7 @@ create_socket:
 
 section .data
     read_command db "read", 0
+    extract_command db "extract", 0
     answer db "Ok", 0
 
 section .bss

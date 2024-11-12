@@ -35,7 +35,7 @@ list_current_directory:
     mov rax, 78
     syscall
 
-    ; On gcwd call success, rax, whill holds the number of bytes read
+    ; On gcwd call success, rax, will hold the number of bytes read
     mov [rsp], rax ; We gonna store it to use it later
     xor rcx, rcx   ; Make sure rcx set to 0 to use it as a counter
     xor r11, r11
@@ -82,13 +82,15 @@ breakdown_getdents_structure:
     lea rdi, [current_file_name]    ; rdi: holds variable address for future file name
     call iterate_through_file_name
 
+    mov [rsp + 16], r11
+
     mov [rsp], rcx                  ; Store the counter in the stack
     mov [rsp + 8], rsi              ; Store the buffer entry directories
     call send_message_to_client
-
-    mov [rsp + 16], r11
     
-    cmp r11, [rsp + 32]             ; We need to compare rcx with the value store in [rsp] being the total bytes read
+    mov r11, [rsp + 16]
+    
+    cmp r11, [rsp + 40]             ; We need to compare rcx with the value store in [rsp] being the total bytes read
     je breakdown_struct_ends
 
     ; Points rcx to the next structure in the buffer
