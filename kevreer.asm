@@ -82,6 +82,15 @@ compare_message_to_create:
 
     ret
 
+compare_message_to_write:
+    mov al, [rsi + rcx]
+    cmp al, [write_command]
+    
+    inc rcx
+    cmp rcx, 5
+    jl compare_message_to_write
+    je skrivan
+
 do_accept:
     ; int accept(int sockfd, struct sockaddr addr, socklen_t restrict addrlen)
     ; sockfd  : File descriptor created by *create_socket*
@@ -176,6 +185,7 @@ create_socket:
 
 section .data
     read_command db "read", 0
+    write_command db "write", 0
     create_command db "create", 0
     answer db "Ok", 0
 
