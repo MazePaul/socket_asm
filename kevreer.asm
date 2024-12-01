@@ -1,6 +1,7 @@
 global _start
 
 extern dizo
+extern adenvel
 
 section .text
 
@@ -41,7 +42,7 @@ receive_message_from_client:
     mov byte [rsi+rax-1], 0             ; remove the carriage return
     xor rcx, rcx                        ; set counter to 0
 
-    call compare_message_to_command
+    call compare_message_to_read
 
     mov rsp, rbp
     pop rbp
@@ -50,7 +51,7 @@ receive_message_from_client:
 
     ret
 
-compare_message_to_command:
+compare_message_to_read:
     ; String comparaison
     ; al  : is rax's 8 bit register
     ; rsi : holds client_message
@@ -59,17 +60,27 @@ compare_message_to_command:
     mov al, [rsi+rcx]
     cmp al, [read_command + rcx] 
 
-    je count_inc
+    jne compare_message_to_create
 
-    ret
-
-count_inc:
     ; inc rcx, if rcx reach 3, go to send_message
     ; 3 because read is 0 -> 3 char
     inc rcx
     cmp rcx, 3
-    jl compare_message_to_command
+    jl compare_message_to_read
     je dizo 
+
+    ret
+
+compare_message_to_create:
+    mov al, [rsi+rcx]
+    cmp al, [create_command]
+
+    inc rcx
+    cmp rcx, 6
+    jl compare_message_to_create
+    je adenvel
+
+    ret
 
 do_accept:
     ; int accept(int sockfd, struct sockaddr addr, socklen_t restrict addrlen)
@@ -165,7 +176,7 @@ create_socket:
 
 section .data
     read_command db "read", 0
-    extract_command db "extract", 0
+    create_command db "create", 0
     answer db "Ok", 0
 
 section .bss
