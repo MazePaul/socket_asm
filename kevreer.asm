@@ -2,6 +2,7 @@ global _start
 
 extern dizo
 extern adenvel
+extern skriven
 
 section .text
 
@@ -75,21 +76,23 @@ compare_message_to_create:
     mov al, [rsi+rcx]
     cmp al, [create_command]
 
+    jne compare_message_to_get
+
     inc rcx
-    cmp rcx, 6
+    cmp rcx, 5
     jl compare_message_to_create
     je adenvel
 
     ret
 
-compare_message_to_write:
+compare_message_to_get:
     mov al, [rsi + rcx]
-    cmp al, [write_command]
+    cmp al, [get_command]
     
     inc rcx
-    cmp rcx, 5
-    jl compare_message_to_write
-    je skrivan
+    cmp rcx, 2
+    jl compare_message_to_get
+    je skriven
 
 do_accept:
     ; int accept(int sockfd, struct sockaddr addr, socklen_t restrict addrlen)
@@ -185,7 +188,7 @@ create_socket:
 
 section .data
     read_command db "read", 0
-    write_command db "write", 0
+    get_command db "get", 0
     create_command db "create", 0
     answer db "Ok", 0
 
